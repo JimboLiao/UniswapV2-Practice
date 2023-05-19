@@ -2,16 +2,15 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { IUniswapV2Router01 } from "v2-periphery/interfaces/IUniswapV2Router01.sol";
-import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
-import { IUniswapV2Pair } from "v2-core/interfaces/IUniswapV2Pair.sol";
-import { TestERC20 } from "../contracts/test/TestERC20.sol";
+import {IUniswapV2Router01} from "v2-periphery/interfaces/IUniswapV2Router01.sol";
+import {IUniswapV2Factory} from "v2-core/interfaces/IUniswapV2Factory.sol";
+import {IUniswapV2Pair} from "v2-core/interfaces/IUniswapV2Pair.sol";
+import {TestERC20} from "../contracts/test/TestERC20.sol";
 
 contract UniswapV2PracticeTest is Test {
     IUniswapV2Router01 public constant UNISWAP_V2_ROUTER =
         IUniswapV2Router01(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-    IUniswapV2Factory public constant UNISWAP_V2_FACTORY =
-        IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);
+    IUniswapV2Factory public constant UNISWAP_V2_FACTORY = IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);
     address public constant WETH9 = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     TestERC20 public testUSDC;
@@ -45,10 +44,19 @@ contract UniswapV2PracticeTest is Test {
     // # Practice 1: maker add liquidity (100 ETH, 10000 USDC)
     function test_maker_addLiquidityETH() public {
         // Implement here
+        // maker add liquidityETH
+        uint256 amount = 10000 * 10 ** testUSDC.decimals();
+        vm.startPrank(maker);
+        // approve router to use maker's token
+        testUSDC.approve(address(UNISWAP_V2_ROUTER), amount);
+        // send 100 ether & amount USDC
+        // addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline)
+        UNISWAP_V2_ROUTER.addLiquidityETH{value: 100 ether}(address(testUSDC), amount, 0, 0, maker, block.timestamp);
+        vm.stopPrank();
 
         // Checking
         IUniswapV2Pair wethUsdcPair = IUniswapV2Pair(UNISWAP_V2_FACTORY.getPair(address(WETH9), address(testUSDC)));
-        (uint112 reserve0, uint112 reserve1, ) = wethUsdcPair.getReserves();
+        (uint112 reserve0, uint112 reserve1,) = wethUsdcPair.getReserves();
         assertEq(reserve0, 10000 * 10 ** testUSDC.decimals());
         assertEq(reserve1, 100 ether);
     }
@@ -56,6 +64,23 @@ contract UniswapV2PracticeTest is Test {
     // # Practice 2: taker swap exact 100 ETH for testUSDC
     function test_taker_swapExactETHForTokens() public {
         // Impelement here
+        // maker add liquidityETH
+        uint256 amount = 10000 * 10 ** testUSDC.decimals();
+        vm.startPrank(maker);
+        // approve router to use maker's token
+        testUSDC.approve(address(UNISWAP_V2_ROUTER), amount);
+        // send 100 ether & amount USDC
+        UNISWAP_V2_ROUTER.addLiquidityETH{value: 100 ether}(address(testUSDC), amount, 0, 0, maker, block.timestamp);
+        vm.stopPrank();
+
+        //taker swap
+        address[] memory path = new address[](2);
+        path[0] = WETH9;
+        path[1] = address(testUSDC);
+        vm.startPrank(taker);
+        // swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
+        UNISWAP_V2_ROUTER.swapExactETHForTokens{value: 100 ether}(4992488733, path, taker, block.timestamp);
+        vm.stopPrank();
 
         // Checking
         // # Disscussion 1: discuss why 4992488733 ?
@@ -66,6 +91,25 @@ contract UniswapV2PracticeTest is Test {
     // # Practice 3: taker swap exact 10000 USDC for ETH
     function test_taker_swapExactTokensForETH() public {
         // Impelement here
+        // maker add liquidityETH
+        uint256 amount = 10000 * 10 ** testUSDC.decimals();
+        vm.startPrank(maker);
+        // approve router to use maker's token
+        testUSDC.approve(address(UNISWAP_V2_ROUTER), amount);
+        // send 100 ether & amount USDC
+        UNISWAP_V2_ROUTER.addLiquidityETH{value: 100 ether}(address(testUSDC), amount, 0, 0, maker, block.timestamp);
+        vm.stopPrank();
+
+        // taker swap
+        address[] memory path = new address[](2);
+        path[0] = address(testUSDC);
+        path[1] = WETH9;
+        vm.startPrank(taker);
+        testUSDC.mint(taker, amount);
+        testUSDC.approve(address(UNISWAP_V2_ROUTER), amount);
+        // swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+        UNISWAP_V2_ROUTER.swapExactTokensForETH(amount, 49924887330996494742, path, taker, block.timestamp);
+        vm.stopPrank();
 
         // Checking
         // # Disscussion 2: original balance is 100 ether, so delta is 49924887330996494742, but why 49924887330996494742 ?
@@ -76,10 +120,25 @@ contract UniswapV2PracticeTest is Test {
     // # Practice 4: maker remove all liquidity
     function test_maker_removeLiquidityETH() public {
         // Implement here
+        // maker add liquidityETH
+        uint256 amount = 10000 * 10 ** testUSDC.decimals();
+        vm.startPrank(maker);
+        // approve router to use maker's token
+        testUSDC.approve(address(UNISWAP_V2_ROUTER), amount);
+        // send 100 ether & amount USDC
+        (,, uint256 liquidity) =
+            UNISWAP_V2_ROUTER.addLiquidityETH{value: 100 ether}(address(testUSDC), amount, 0, 0, maker, block.timestamp);
+
+        // maker remove liquidity
+        IUniswapV2Pair wethUsdcPair = IUniswapV2Pair(UNISWAP_V2_FACTORY.getPair(address(WETH9), address(testUSDC)));
+        wethUsdcPair.approve(address(UNISWAP_V2_ROUTER), liquidity);
+
+        // removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline)
+        UNISWAP_V2_ROUTER.removeLiquidityETH(address(testUSDC), liquidity, 0, 0, maker, block.timestamp);
+        vm.stopPrank();
 
         // Checking
-        IUniswapV2Pair wethUsdcPair = IUniswapV2Pair(UNISWAP_V2_FACTORY.getPair(address(WETH9), address(testUSDC)));
-        (uint112 reserve0, uint112 reserve1, ) = wethUsdcPair.getReserves();
+        (uint112 reserve0, uint112 reserve1,) = wethUsdcPair.getReserves();
         assertEq(reserve0, 1);
         assertEq(reserve1, 100000000);
     }
